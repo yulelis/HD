@@ -1,0 +1,536 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="도크 칸별 작업 현황 체크 보드">
+<meta name="theme-color" content="#DEDCD5">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="도크 배치도">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2314161A'/%3E%3Crect x='12' y='0' width='8' height='32' fill='%23F2C230'/%3E%3C/svg%3E">
+<title>도크 배치도</title>
+<style>
+:root{
+  --concrete:#DEDCD5;
+  --paper:#FBFAF7;
+  --ink:#14161A;
+  --slate:#6B7178;
+  --hair:#C3C0B8;
+  --stripe:#F2C230;
+  --done:#1B6A4B;
+  --done-bg:#E4EFE9;
+  --flag:#BE3D26;
+  --flag-bg:#FBE9DF;
+  --cond:'Arial Narrow','Roboto Condensed','Helvetica Neue',Haettenschweiler,Impact,sans-serif;
+  --body:'Pretendard',-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif;
+  --mono:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0}
+body{
+  background:var(--concrete);
+  background-image:radial-gradient(rgba(0,0,0,.045) 1px,transparent 1px);
+  background-size:4px 4px;
+  color:var(--ink);
+  font-family:var(--body);
+  font-size:15px;
+  line-height:1.45;
+  padding:14px 12px 60px;
+}
+.wrap{max-width:900px;margin:0 auto}
+
+/* ---------- header ---------- */
+.head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.title{
+  font-family:var(--cond);font-size:30px;font-weight:700;letter-spacing:.06em;
+  text-transform:uppercase;line-height:1;margin:0;
+  border:none;background:none;color:var(--ink);padding:2px 0;min-width:120px;
+  outline-offset:3px;
+}
+.title:focus{outline:2px solid var(--ink)}
+.tally{font-family:var(--mono);font-size:12px;color:var(--slate);letter-spacing:.04em;white-space:nowrap}
+.tally b{font-family:var(--cond);font-size:24px;font-weight:700;color:var(--ink);letter-spacing:.02em}
+
+/* ---------- toolbar ---------- */
+.bar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+.btn{
+  font-family:var(--body);font-size:12.5px;font-weight:600;letter-spacing:.01em;
+  padding:7px 11px;border:1.5px solid var(--ink);background:var(--paper);color:var(--ink);
+  cursor:pointer;border-radius:0;
+}
+.btn:hover{background:var(--ink);color:var(--paper)}
+.btn:focus-visible{outline:3px solid var(--stripe);outline-offset:1px}
+.btn[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.btn--ghost{border-color:var(--hair);color:var(--slate);background:transparent}
+.btn--ghost:hover{background:var(--slate);border-color:var(--slate);color:var(--paper)}
+
+.hint{
+  font-size:12px;color:var(--slate);margin:-8px 0 14px;
+  border-left:3px solid var(--stripe);padding-left:8px;
+}
+
+/* ---------- board ---------- */
+.sheet{background:var(--paper);border:1.5px solid var(--ink);padding:20px 12px 0}
+.board{display:flex;align-items:flex-start;gap:0}
+.wing{flex:1;display:flex;flex-direction:column;gap:26px;min-width:0}
+.group{display:flex;align-items:center;gap:8px}
+.stack{flex:1;display:flex;flex-direction:column;gap:7px;min-width:0}
+
+/* bays */
+.row{display:flex;align-items:center;gap:5px;justify-content:center}
+.wing--l .row{flex-direction:row}
+.wing--r .row{flex-direction:row-reverse}
+.bay{
+  flex:0 0 46%;min-width:52px;height:34px;display:flex;align-items:center;justify-content:center;
+  border:1.6px solid var(--ink);background:var(--paper);cursor:pointer;position:relative;
+  transition:background .12s ease;
+}
+@media (prefers-reduced-motion:reduce){.bay{transition:none}}
+.bay:focus-visible{outline:3px solid var(--stripe);outline-offset:2px}
+.bay .no{
+  font-family:var(--cond);font-size:19px;font-weight:700;letter-spacing:.04em;
+  line-height:1;pointer-events:none;white-space:nowrap;overflow:hidden;
+}
+.bay[data-s="done"]{background:var(--done-bg)}
+.bay[data-s="done"]::after{content:"";position:absolute;inset:0;border:1.6px solid var(--done)}
+.bay[data-s="flag"]{background:var(--flag-bg)}
+.bay[data-s="flag"]::after{content:"";position:absolute;inset:0;border:1.6px solid var(--flag)}
+.mark{
+  flex:0 0 18px;text-align:center;font-size:15px;line-height:1;
+  font-family:var(--cond);font-weight:700;pointer-events:none;
+}
+.mark[data-s="done"]{color:var(--done)}
+.mark[data-s="flag"]{color:var(--flag);font-size:14px}
+
+/* edit mode */
+body[data-mode="edit"] .bay{cursor:text;border-style:dashed}
+.bay input{
+  width:100%;height:100%;border:0;background:transparent;text-align:center;
+  font-family:var(--cond);font-size:19px;font-weight:700;letter-spacing:.04em;color:var(--ink);
+  padding:0 4px;
+}
+.bay input:focus{outline:none;background:#FFF6D6}
+.ctl{display:flex;gap:5px;justify-content:center;padding-top:3px}
+.mini{
+  font-family:var(--body);font-size:11px;font-weight:600;letter-spacing:.02em;
+  padding:3px 9px;border:1px dashed var(--hair);background:transparent;color:var(--slate);cursor:pointer;
+}
+.mini:hover{border-color:var(--ink);border-style:solid;color:var(--ink)}
+.mini:focus-visible{outline:2px solid var(--stripe);outline-offset:1px}
+
+/* 그룹 바깥쪽 여백 메모판 */
+.note{flex:0 0 32%;min-width:46px;align-self:stretch;display:flex;margin:14px 0}
+.note textarea{
+  flex:1;width:100%;resize:none;background:transparent;color:var(--ink);
+  border:1.2px dashed var(--hair);padding:5px 6px;
+  font-family:var(--body);font-size:12px;line-height:1.5;
+}
+.note textarea:focus{outline:none;border-style:solid;border-color:var(--ink);background:#FFF6D6}
+.note textarea::placeholder{color:var(--hair)}
+
+/* 줄 사이 메모 */
+.row--memo{justify-content:flex-start;gap:4px}
+.wing--r .row--memo{flex-direction:row}
+.noteline{
+  flex:1;min-width:0;height:24px;padding:2px 4px;background:transparent;
+  border:0;border-bottom:1.2px dashed var(--hair);
+  font-family:var(--body);font-size:12.5px;font-weight:500;color:var(--ink);
+}
+.noteline:focus{outline:none;background:#FFF6D6;border-bottom-color:var(--ink)}
+.noteline::placeholder{color:var(--hair)}
+.rmv{
+  flex:0 0 20px;border:0;background:transparent;color:var(--hair);
+  font-size:15px;line-height:1;padding:2px;cursor:pointer;
+}
+.rmv:hover{color:var(--flag)}
+.rmv:focus-visible{outline:2px solid var(--stripe)}
+body[data-mode="status"] .rmv{display:none}
+
+.gap{display:flex;align-items:center;justify-content:center;height:18px;margin:-2px 0}
+.gap button{
+  border:1px dashed var(--hair);background:var(--paper);color:var(--slate);
+  font-family:var(--body);font-size:10px;font-weight:600;letter-spacing:.02em;line-height:1;
+  padding:3px 8px;cursor:pointer;
+}
+.gap button:hover{border-style:solid;border-color:var(--ink);color:var(--ink)}
+.gap button:focus-visible{outline:2px solid var(--stripe);outline-offset:1px}
+
+/* outer units (기둥·설비) */
+.unit{
+  flex:0 0 26px;align-self:stretch;min-height:70px;margin:14px 0;
+  border:1.6px solid var(--ink);background:var(--paper);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
+  padding:6px 0;cursor:pointer;
+}
+.unit:focus-visible{outline:3px solid var(--stripe);outline-offset:2px}
+.dot{width:6px;height:6px;border:1.4px solid var(--ink);border-radius:50%;flex:0 0 auto}
+body[data-mode="edit"] .unit{border-style:dashed}
+
+/* lane — the signature */
+.lane{
+  flex:0 0 30px;align-self:stretch;min-height:100px;
+  border-left:1.6px solid var(--ink);border-right:1.6px solid var(--ink);
+  background:repeating-linear-gradient(135deg,var(--stripe) 0 7px,var(--ink) 7px 14px);
+  opacity:.9;
+}
+.tail{height:74px;display:flex;justify-content:center;overflow:hidden;margin-top:-1px}
+.tail i{
+  display:block;width:30px;height:74px;
+  border-left:1.6px solid var(--ink);border-right:1.6px solid var(--ink);
+  background:repeating-linear-gradient(135deg,var(--stripe) 0 7px,var(--ink) 7px 14px);
+  opacity:.9;
+}
+
+/* ---------- memo rail ---------- */
+.rail{margin-top:18px;border-top:1.6px solid var(--ink);padding-top:14px}
+.rail h2{
+  font-family:var(--cond);font-size:14px;font-weight:700;letter-spacing:.16em;
+  text-transform:uppercase;margin:0 0 10px;color:var(--slate);
+}
+.memo{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px dashed var(--hair)}
+.memo .k{
+  flex:0 0 34%;font-size:13px;font-weight:600;color:var(--slate);
+  border:0;background:transparent;font-family:var(--body);padding:2px 4px;min-width:0;
+}
+.memo .v{
+  flex:1;font-family:var(--mono);font-size:14px;font-weight:600;color:var(--ink);
+  border:0;background:transparent;padding:2px 4px;min-width:0;
+}
+.memo .k:focus,.memo .v:focus{outline:none;background:#FFF6D6}
+.memo .x{
+  flex:0 0 22px;border:0;background:transparent;color:var(--hair);cursor:pointer;
+  font-size:16px;line-height:1;padding:2px;
+}
+.memo .x:hover{color:var(--flag)}
+.memo .x:focus-visible{outline:2px solid var(--stripe)}
+
+.foot{margin-top:18px;padding-bottom:20px;display:flex;gap:6px;flex-wrap:wrap}
+
+@media (max-width:420px){
+  .lane{flex:0 0 20px}
+  .tail i{width:20px}
+  .bay .no,.bay input{font-size:17px}
+  .unit{flex:0 0 20px}
+  .group{gap:5px}
+  .note{flex:0 0 30%;min-width:40px}
+  .note textarea{font-size:11px;padding:4px}
+}
+
+@media print{
+  body{background:#fff;padding:0}
+  .bar,.foot,.hint,.memo .x,.ctl,.gap,.rmv,#addMemo{display:none}
+  .sheet{border:none}
+  body[data-mode="edit"] .bay,
+  body[data-mode="edit"] .unit{border-style:solid}
+  .bay input{background:transparent}
+}
+</style>
+</head>
+<body data-mode="status">
+<div class="wrap">
+
+  <div class="head">
+    <input class="title" id="title" value="도크 배치도" aria-label="배치도 이름">
+    <div class="tally"><b id="doneN">0</b> 완료 &nbsp;/&nbsp; <b id="flagN">0</b> 보류 &nbsp;/&nbsp; 전체 <b id="allN">0</b></div>
+  </div>
+
+  <div class="bar">
+    <button class="btn" id="mStatus" aria-pressed="true">상태 체크</button>
+    <button class="btn" id="mEdit" aria-pressed="false">번호 편집</button>
+    <button class="btn btn--ghost" id="clear">체크 지우기</button>
+  </div>
+  <p class="hint" id="hint">칸을 누르면 <b>빈칸 → ✓ 완료 → ★ 보류</b>로 바뀝니다. 칸 바깥 여백은 <b>구역 메모</b>칸이니 바로 적으면 됩니다.</p>
+
+  <div class="sheet">
+    <div class="board">
+      <div class="wing wing--l" id="wingL"></div>
+      <div class="lane" aria-hidden="true"></div>
+      <div class="wing wing--r" id="wingR"></div>
+    </div>
+    <div class="tail" aria-hidden="true"><i></i></div>
+
+    <div class="rail">
+      <h2>메모</h2>
+      <div id="memos"></div>
+      <button class="btn btn--ghost" id="addMemo" style="margin-top:10px">메모 추가</button>
+    </div>
+  </div>
+
+  <div class="foot">
+    <button class="btn" id="save">파일로 저장</button>
+    <button class="btn" id="load">파일 불러오기</button>
+    <button class="btn" id="print">인쇄 · PDF</button>
+    <button class="btn btn--ghost" id="reset">처음 상태로</button>
+    <input type="file" id="file" accept=".json,application/json" hidden>
+  </div>
+  <p class="hint" style="margin-top:10px">입력한 내용은 이 기기 브라우저에 자동 저장됩니다. 다른 기기로 옮기거나 백업할 땐 <b>파일로 저장</b>을 쓰세요.</p>
+
+</div>
+
+<script>
+const START = {
+  title: "도크 배치도",
+  wings: {
+    l: [
+      { unit: 4, note: "", bays: [["11",""],["12","done"],["13","done"],["14","done"],["15","flag"]] },
+      { unit: 1, note: "", bays: [["16","done"],["17","done"],["18","done"],["19","done"],["20",""],["21",""]] }
+    ],
+    r: [
+      { unit: 4, note: "13/10", bays: [["1","done"],["2","done"],["3","done"],["4","done"],["5","flag"]] },
+      { unit: 2, note: "7.70\nNEICopase (9–10)", bays: [["6","done"],["7","done"],["8","done"],["9",""],["10",""]] }
+    ]
+  },
+  memos: [["수량","12EA"]]
+};
+
+const CYCLE = ["", "done", "flag"];
+const GLYPH = { "": "", done: "✓", flag: "★" };
+const KEY = "dock-board-v1";
+let S = structuredClone(START);
+
+function valid(d) { return d && d.wings && Array.isArray(d.wings.l) && Array.isArray(d.wings.r); }
+
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {}
+}
+
+function restore() {
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (!raw) return;
+    const d = JSON.parse(raw);
+    if (valid(d)) { S = d; S.memos = S.memos || []; }
+  } catch (e) {}
+}
+
+const $ = id => document.getElementById(id);
+
+/* ---- render ---- */
+function render() {
+  $("title").value = S.title;
+  ["l", "r"].forEach(side => {
+    const wing = $(side === "l" ? "wingL" : "wingR");
+    wing.innerHTML = "";
+    S.wings[side].forEach((grp, gi) => {
+      const g = document.createElement("div");
+      g.className = "group";
+
+      const unit = document.createElement("div");
+      unit.className = "unit";
+      unit.tabIndex = 0;
+      unit.setAttribute("role", "button");
+      unit.setAttribute("aria-label", "기둥 표시 점 " + grp.unit + "개");
+      for (let i = 0; i < grp.unit; i++) unit.appendChild(Object.assign(document.createElement("span"), { className: "dot" }));
+      const bumpUnit = () => { grp.unit = grp.unit >= 5 ? 0 : grp.unit + 1; render(); };
+      unit.onclick = bumpUnit;
+      unit.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); bumpUnit(); } };
+
+      const stack = document.createElement("div");
+      stack.className = "stack";
+      const editing = document.body.dataset.mode === "edit";
+      const gapBtn = pos => {
+        const g2 = document.createElement("div");
+        g2.className = "gap";
+        const b = document.createElement("button");
+        b.textContent = "+ 메모";
+        b.setAttribute("aria-label", "이 자리에 메모 줄 넣기");
+        b.onclick = () => { grp.bays.splice(pos, 0, ["", "memo"]); render(); };
+        g2.appendChild(b);
+        return g2;
+      };
+
+      grp.bays.forEach((bay, bi) => {
+        if (editing) stack.appendChild(gapBtn(bi));
+        stack.appendChild(makeRow(side, gi, bi, bay));
+      });
+      if (editing) stack.appendChild(gapBtn(grp.bays.length));
+
+      if (editing) {
+        const ctl = document.createElement("div");
+        ctl.className = "ctl";
+        const add = document.createElement("button");
+        add.className = "mini"; add.textContent = "+ 칸 추가";
+        add.onclick = () => {
+          const last = [...grp.bays].reverse().find(b => b[1] !== "memo");
+          const n = last ? parseInt(last[0], 10) : 0;
+          grp.bays.push([Number.isFinite(n) ? String(n + 1) : "", ""]);
+          render();
+        };
+        const del = document.createElement("button");
+        del.className = "mini"; del.textContent = "− 칸 삭제";
+        del.onclick = () => {
+          for (let i = grp.bays.length - 1; i >= 0; i--) {
+            if (grp.bays[i][1] !== "memo") { grp.bays.splice(i, 1); break; }
+          }
+          render();
+        };
+        ctl.append(add, del);
+        stack.appendChild(ctl);
+      }
+
+      const note = document.createElement("div");
+      note.className = "note";
+      const ta = document.createElement("textarea");
+      ta.value = grp.note || "";
+      ta.placeholder = "메모";
+      ta.setAttribute("aria-label", "구역 메모");
+      ta.oninput = () => { grp.note = ta.value; save(); };
+      note.appendChild(ta);
+
+      if (side === "l") { g.append(unit, note, stack); } else { g.append(stack, note, unit); }
+      wing.appendChild(g);
+    });
+  });
+  renderMemos();
+  tally();
+  save();
+}
+
+function makeRow(side, gi, bi, bay) {
+  if (bay[1] === "memo") {
+    const row = document.createElement("div");
+    row.className = "row row--memo";
+    const inp = document.createElement("input");
+    inp.className = "noteline";
+    inp.value = bay[0];
+    inp.placeholder = "메모…";
+    inp.setAttribute("aria-label", "줄 사이 메모");
+    inp.oninput = () => { S.wings[side][gi].bays[bi][0] = inp.value; save(); };
+    const x = document.createElement("button");
+    x.className = "rmv"; x.textContent = "×";
+    x.setAttribute("aria-label", "메모 줄 삭제");
+    x.onclick = () => { S.wings[side][gi].bays.splice(bi, 1); render(); };
+    row.append(inp, x);
+    return row;
+  }
+
+  const row = document.createElement("div");
+  row.className = "row";
+
+  const mark = document.createElement("span");
+  mark.className = "mark";
+  mark.dataset.s = bay[1];
+  mark.textContent = GLYPH[bay[1]];
+
+  const box = document.createElement("div");
+  box.className = "bay";
+  box.dataset.s = bay[1];
+  box.tabIndex = 0;
+  box.setAttribute("role", "button");
+  box.setAttribute("aria-label", bay[0] + "번 칸, " + (bay[1] === "done" ? "완료" : bay[1] === "flag" ? "보류" : "미완료"));
+
+  if (document.body.dataset.mode === "edit") {
+    const inp = document.createElement("input");
+    inp.value = bay[0];
+    inp.setAttribute("aria-label", "칸 번호");
+    inp.oninput = () => { S.wings[side][gi].bays[bi][0] = inp.value; save(); };
+    box.appendChild(inp);
+    box.onclick = () => inp.focus();
+  } else {
+    const no = document.createElement("span");
+    no.className = "no";
+    no.textContent = bay[0];
+    box.appendChild(no);
+    const cycle = () => {
+      const next = CYCLE[(CYCLE.indexOf(bay[1]) + 1) % CYCLE.length];
+      S.wings[side][gi].bays[bi][1] = next;
+      box.dataset.s = next; mark.dataset.s = next; mark.textContent = GLYPH[next];
+      box.setAttribute("aria-label", bay[0] + "번 칸, " + (next === "done" ? "완료" : next === "flag" ? "보류" : "미완료"));
+      tally(); save();
+    };
+    box.onclick = cycle;
+    box.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); cycle(); } };
+  }
+
+  if (side === "l") { row.append(mark, box); } else { row.append(box, mark); }
+  return row;
+}
+
+function renderMemos() {
+  const host = $("memos");
+  host.innerHTML = "";
+  S.memos.forEach((m, i) => {
+    const d = document.createElement("div");
+    d.className = "memo";
+    const k = document.createElement("input");
+    k.className = "k"; k.value = m[0]; k.placeholder = "항목";
+    k.setAttribute("aria-label", "메모 항목");
+    k.oninput = () => { S.memos[i][0] = k.value; save(); };
+    const v = document.createElement("input");
+    v.className = "v"; v.value = m[1]; v.placeholder = "내용";
+    v.setAttribute("aria-label", "메모 내용");
+    v.oninput = () => { S.memos[i][1] = v.value; save(); };
+    const x = document.createElement("button");
+    x.className = "x"; x.textContent = "×";
+    x.setAttribute("aria-label", "메모 삭제");
+    x.onclick = () => { S.memos.splice(i, 1); renderMemos(); save(); };
+    d.append(k, v, x);
+    host.appendChild(d);
+  });
+}
+
+function tally() {
+  const all = [];
+  ["l", "r"].forEach(s => S.wings[s].forEach(g => g.bays.forEach(b => { if (b[1] !== "memo") all.push(b[1]); })));
+  $("doneN").textContent = all.filter(x => x === "done").length;
+  $("flagN").textContent = all.filter(x => x === "flag").length;
+  $("allN").textContent = all.length;
+}
+
+/* ---- controls ---- */
+$("title").oninput = e => { S.title = e.target.value; save(); };
+
+function setMode(m) {
+  document.body.dataset.mode = m;
+  $("mStatus").setAttribute("aria-pressed", m === "status");
+  $("mEdit").setAttribute("aria-pressed", m === "edit");
+  $("hint").innerHTML = m === "status"
+    ? "칸을 누르면 <b>빈칸 → ✓ 완료 → ★ 보류</b>로 바뀝니다. 칸 바깥 여백은 <b>구역 메모</b>칸이니 바로 적으면 됩니다."
+    : "칸을 눌러 번호를 고치고, 줄 사이 <b>+ 메모</b>로 원하는 위치에 메모 줄을 끼워 넣으세요. 묶음 아래 <b>+ 칸 추가 / − 칸 삭제</b>로 개수도 조절됩니다.";
+  render();
+}
+$("mStatus").onclick = () => setMode("status");
+$("mEdit").onclick = () => setMode("edit");
+
+$("clear").onclick = () => {
+  ["l", "r"].forEach(s => S.wings[s].forEach(g => g.bays.forEach(b => b[1] = "")));
+  render();
+};
+
+$("reset").onclick = () => { S = structuredClone(START); setMode("status"); };
+
+$("save").onclick = () => {
+  const blob = new Blob([JSON.stringify(S, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = (S.title || "도크배치도").replace(/\s+/g, "-") + ".json";
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
+
+$("load").onclick = () => $("file").click();
+$("file").onchange = e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const d = JSON.parse(r.result);
+      if (!d.wings || !d.wings.l || !d.wings.r) throw 0;
+      S = d; S.memos = S.memos || []; render();
+    } catch {
+      alert("이 파일은 배치도 형식이 아닙니다. ‘파일로 저장’으로 만든 .json 파일을 골라 주세요.");
+    }
+  };
+  r.readAsText(f);
+  e.target.value = "";
+};
+
+$("print").onclick = () => window.print();
+$("addMemo").onclick = () => { S.memos.push(["", ""]); renderMemos(); save(); };
+
+restore();
+render();
+</script>
+</body>
+</html>
